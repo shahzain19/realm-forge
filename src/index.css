@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 @import "tailwindcss";
+
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   --font-heading: "Plus Jakarta Sans", system-ui, sans-serif;
@@ -76,13 +77,13 @@
   --destructive-foreground: oklch(0.98 0 0);
 
   /* Borders / Input */
-  --border: oklch(0.90 0.01 250);
-  --input: oklch(0.90 0.01 250);
+  --border: oklch(0.95 0.01 250);
+  --input: oklch(0.95 0.01 250);
   --ring: oklch(0.50 0.20 250);
   /* Matches Primary */
 
-  --radius: 0.5rem;
-  /* Slightly tighter radius for cleaner look */
+  --radius: 0.75rem;
+  /* Slightly more rounded for modern feel */
 }
 
 body {

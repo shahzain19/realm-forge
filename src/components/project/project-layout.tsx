@@ -1,5 +1,5 @@
 import { Link, Outlet, useParams, useLocation } from "react-router-dom"
-import { LayoutGrid, FileText, Map as MapIcon, Database, Settings, ArrowLeft, BookOpen } from "lucide-react"
+import { LayoutGrid, FileText, Map as MapIcon, Database, Settings, ArrowLeft, BookOpen, CheckSquare } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { cn } from "../../lib/utils"
 
@@ -9,6 +9,7 @@ export function ProjectLayout() {
 
     const navItems = [
         { name: "Overview", icon: LayoutGrid, href: `/project/${projectId}` },
+        { name: "Tasks", icon: CheckSquare, href: `/project/${projectId}/tasks` },
         { name: "Game Design Doc", icon: BookOpen, href: `/project/${projectId}/gdd` },
         { name: "Project Docs", icon: FileText, href: `/project/${projectId}/docs` },
         { name: "World Map", icon: MapIcon, href: `/project/${projectId}/world` },

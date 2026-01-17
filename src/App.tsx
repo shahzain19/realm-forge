@@ -4,6 +4,7 @@ import { SignupPage } from "./pages/signup"
 import { Dashboard } from "./pages/dashboard"
 import { ProjectLayout } from "./components/project/project-layout"
 import { ProjectOverview } from "./pages/project/overview"
+import { TasksPage } from "./pages/project/tasks"
 import { DocumentManager } from "./components/project/document-manager"
 import { GDDEditorRedirect } from "./components/project/gdd-editor-redirect"
 import { WorldBuilder } from "./components/project/world-builder"
@@ -11,6 +12,7 @@ import { SystemsDesigner } from "./components/project/systems-designer"
 import ProjectSettings from "./pages/project/settings"
 import { AcceptInvitation } from "./pages/accept-invitation"
 import { ProtectedRoute } from "./components/layout/protected-route"
+import { LandingPage } from "./pages/landing"
 
 function App() {
   return (
@@ -18,8 +20,9 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/" element={<LandingPage />} />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
@@ -35,6 +38,7 @@ function App() {
           }
         >
           <Route index element={<ProjectOverview />} />
+          <Route path="tasks" element={<TasksPage />} />
           <Route path="gdd" element={<GDDEditorRedirect />} />
           <Route path="docs" element={<DocumentManager />} />
           <Route path="world" element={<WorldBuilder />} />

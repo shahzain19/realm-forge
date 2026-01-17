@@ -456,14 +456,14 @@ export function WorldBuilder() {
                         y={-5000}
                         width={10000}
                         height={10000}
-                        fill="#f8fafc"
+                        fill="#ffffff"
                         listening={false}
                     />
                     {[...Array(100)].map((_, i) => (
                         <Line
                             key={`v-${i}`}
                             points={[(i - 50) * 100, -5000, (i - 50) * 100, 5000]}
-                            stroke="#e2e8f0"
+                            stroke="#f1f5f9"
                             strokeWidth={1}
                         />
                     ))}
@@ -471,7 +471,7 @@ export function WorldBuilder() {
                         <Line
                             key={`h-${i}`}
                             points={[-5000, (i - 50) * 100, 5000, (i - 50) * 100]}
-                            stroke="#e2e8f0"
+                            stroke="#f1f5f9"
                             strokeWidth={1}
                         />
                     ))}

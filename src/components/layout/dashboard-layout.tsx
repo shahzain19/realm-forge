@@ -13,10 +13,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <aside className="w-64 border-r border-border bg-card flex flex-col">
                 <div className="p-6">
                     <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-                        <span className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-                            W
+                        <span className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+                            R
                         </span>
-                        WorldForge
+                        RealmForge
                     </h1>
                 </div>
 
