@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
+@import "tailwindcss";
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-heading: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Nunito Sans", system-ui, sans-serif;
+
+  /* Color Palette - Light Base + Blue/Black Accents */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+:root {
+  /* Base: Light */
+  --background: oklch(0.99 0 0);
+  /* Near White */
+  --foreground: oklch(0.12 0.01 260);
+  /* Deep Black/Ink */
+
+  /* Card / Surfaces */
+  --card: oklch(1 0 0);
+  /* Pure White */
+  --card-foreground: oklch(0.12 0.01 260);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.01 260);
+
+  /* Primary: Vibrant Blue */
+  --primary: oklch(45.002% 0.25706 276.777);
+  /* Strong Blue */
+  --primary-foreground: oklch(1 0 0);
+  /* White */
+
+  /* Secondary: Light Cool Gray */
+  --secondary: oklch(0.96 0.01 250);
+  --secondary-foreground: oklch(0.20 0.02 250);
+
+  /* Mute: Subtle Gray */
+  --muted: oklch(0.96 0.01 250);
+  --muted-foreground: oklch(0.55 0.02 250);
+
+  /* Accent: Hover states (Light Blueish) */
+  --accent: oklch(0.95 0.03 250);
+  --accent-foreground: oklch(0.12 0.01 260);
+
+  /* Destructive */
+  --destructive: oklch(0.58 0.20 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  /* Borders / Input */
+  --border: oklch(0.90 0.01 250);
+  --input: oklch(0.90 0.01 250);
+  --ring: oklch(0.50 0.20 250);
+  /* Matches Primary */
+
+  --radius: 0.5rem;
+  /* Slightly tighter radius for cleaner look */
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

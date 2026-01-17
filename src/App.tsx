@@ -1,0 +1,51 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { LoginPage } from "./pages/login"
+import { SignupPage } from "./pages/signup"
+import { Dashboard } from "./pages/dashboard"
+import { ProjectLayout } from "./components/project/project-layout"
+import { ProjectOverview } from "./pages/project/overview"
+import { DocumentManager } from "./components/project/document-manager"
+import { GDDEditorRedirect } from "./components/project/gdd-editor-redirect"
+import { WorldBuilder } from "./components/project/world-builder"
+import { SystemsDesigner } from "./components/project/systems-designer"
+import ProjectSettings from "./pages/project/settings"
+import { AcceptInvitation } from "./pages/accept-invitation"
+import { ProtectedRoute } from "./components/layout/protected-route"
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId"
+          element={
+            <ProtectedRoute>
+              <ProjectLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ProjectOverview />} />
+          <Route path="gdd" element={<GDDEditorRedirect />} />
+          <Route path="docs" element={<DocumentManager />} />
+          <Route path="world" element={<WorldBuilder />} />
+          <Route path="systems" element={<SystemsDesigner />} />
+          <Route path="settings" element={<ProjectSettings />} />
+        </Route>
+        <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
+
