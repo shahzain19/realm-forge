@@ -84,11 +84,20 @@ async function generateSitemap() {
     sitemap += `
 </urlset>`;
 
+
     // 4. Write to file
     const publicDir = path.join(__dirname, '../public');
-    fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemap);
+    const distDir = path.join(__dirname, '../dist');
 
+    // Write to public (for dev)
+    fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemap);
     console.log(`✅ Sitemap generated at ${path.join(publicDir, 'sitemap.xml')}`);
+
+    // Write to dist (for production) if it exists
+    if (fs.existsSync(distDir)) {
+        fs.writeFileSync(path.join(distDir, 'sitemap.xml'), sitemap);
+        console.log(`✅ Sitemap also copied to ${path.join(distDir, 'sitemap.xml')}`);
+    }
 }
 
 generateSitemap();
