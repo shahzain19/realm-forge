@@ -1,0 +1,8 @@
+https://realm-forge-nine.vercel.app/
+https://realm-forge-nine.vercel.app/login
+https://realm-forge-nine.vercel.app/signup
+https://realm-forge-nine.vercel.app/templates/rpg-world
+https://realm-forge-nine.vercel.app/templates/open-world
+https://realm-forge-nine.vercel.app/templates/survival
+https://realm-forge-nine.vercel.app/templates/horror
+https://realm-forge-nine.vercel.app/blog

@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://realm-forge-nine.vercel.app/sitemap.xml
+Sitemap: https://realm-forge-nine.vercel.app/sitemap.txt
