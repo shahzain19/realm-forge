@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { SEOHead } from '../../components/seo-head';
-import { Loader2, ArrowLeft, Calendar, User, Sparkles } from 'lucide-react';
+import { Loader2, ArrowLeft, Calendar, Sparkles } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
