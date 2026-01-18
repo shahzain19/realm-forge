@@ -15,6 +15,12 @@ import { ProtectedRoute } from "./components/layout/protected-route"
 import { LandingPage } from "./pages/landing"
 import ProjectShowcasePage from "./pages/public/project-showcase"
 import MilestonesPage from "./pages/project/milestones"
+import TemplatePage from "./pages/templates/template-page"
+import { AdminRoute } from "./components/layout/admin-route"
+import { AdminDashboard } from "./pages/admin/dashboard"
+import { AdminEditor } from "./pages/admin/editor"
+import { BlogIndex } from "./pages/blog/blog-index"
+import { BlogPostPage } from "./pages/blog/blog-post"
 
 function App() {
   return (
@@ -24,6 +30,7 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/" element={<LandingPage />} />
         <Route path="/p/:projectId" element={<ProjectShowcasePage />} />
+        <Route path="/templates/:slug" element={<TemplatePage />} />
         <Route
           path="/dashboard"
           element={
@@ -50,6 +57,13 @@ function App() {
           <Route path="settings" element={<ProjectSettings />} />
         </Route>
         <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/editor/:id" element={<AdminRoute><AdminEditor /></AdminRoute>} />
+        {/* Blog Routes */}
+        <Route path="/blog" element={<BlogIndex />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
       </Routes>
     </BrowserRouter>
   )

@@ -311,7 +311,7 @@ export function LandingPage() {
                             </div>
                         </div>
 
-                        <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-12">
+                        <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-8">
                             <div>
                                 <h5 className="font-black text-xs uppercase tracking-widest text-zinc-400 mb-8">Platform</h5>
                                 <ul className="space-y-4 text-sm font-bold text-zinc-600">
@@ -330,7 +330,24 @@ export function LandingPage() {
                                     <li className="hover:text-primary transition-colors cursor-pointer">Community</li>
                                 </ul>
                             </div>
-                            <div className="col-span-2 md:col-span-1">
+                            <div>
+                                <h5 className="font-black text-xs uppercase tracking-widest text-zinc-400 mb-8">Templates</h5>
+                                <ul className="space-y-4 text-sm font-bold text-zinc-600">
+                                    <li className="hover:text-primary transition-colors">
+                                        <Link to="/templates/rpg-world">RPG World</Link>
+                                    </li>
+                                    <li className="hover:text-primary transition-colors">
+                                        <Link to="/templates/open-world">Open World</Link>
+                                    </li>
+                                    <li className="hover:text-primary transition-colors">
+                                        <Link to="/templates/survival">Survival</Link>
+                                    </li>
+                                    <li className="hover:text-primary transition-colors">
+                                        <Link to="/templates/horror">Horror</Link>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
                                 <h5 className="font-black text-xs uppercase tracking-widest text-zinc-400 mb-8">Legal</h5>
                                 <ul className="space-y-4 text-sm font-bold text-zinc-600">
                                     <li className="hover:text-primary transition-colors cursor-pointer">Privacy</li>
