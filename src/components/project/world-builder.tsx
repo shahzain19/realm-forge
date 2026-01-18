@@ -10,6 +10,8 @@ import { Textarea } from "../ui/textarea"
 import { Select, SelectItem } from "../ui/select"
 import Konva from 'konva';
 import { exportToJson } from '../../lib/export-utils';
+import { suggestWorldConnections } from '../../lib/gemini';
+import { Sparkles } from 'lucide-react';
 
 interface Node {
     id: string;
@@ -35,9 +37,10 @@ interface Connection {
     notes?: string;
 }
 
-const MemoizedNode = memo(({ node, isConnecting, onDragEnd, onDblClick, onClick, onConnectPort }: {
+const MemoizedNode = memo(({ node, isConnecting, onDragMove, onDragEnd, onDblClick, onClick, onConnectPort }: {
     node: Node,
     isConnecting: boolean,
+    onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void,
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void,
     onDblClick: () => void,
     onClick: () => void,
@@ -48,6 +51,7 @@ const MemoizedNode = memo(({ node, isConnecting, onDragEnd, onDblClick, onClick,
             x={node.x}
             y={node.y}
             draggable
+            onDragMove={onDragMove}
             onDragEnd={onDragEnd}
             onDblClick={onDblClick}
             onClick={onClick}
@@ -129,16 +133,40 @@ const MemoizedConnection = memo(({ connection, fromNode, toNode, onClick }: {
     toNode: Node,
     onClick: () => void
 }) => {
+    // Determine which sides to connect
+    const fromX = fromNode.x + (toNode.x > fromNode.x ? 220 : 0);
+    const fromY = fromNode.y + 70;
+    const toX = toNode.x + (fromNode.x > toNode.x ? 220 : 0);
+    const toY = toNode.y + 70;
+
+    // Control point offset for Bezier curve
+    const dx = Math.abs(toX - fromX) * 0.5;
+    const cp1x = fromX + (toNode.x > fromNode.x ? dx : -dx);
+    const cp2x = toX + (fromNode.x > toNode.x ? dx : -dx);
+
     return (
-        <Line
-            points={[fromNode.x + 110, fromNode.y + 70, toNode.x + 110, toNode.y + 70]}
-            stroke={connection.connection_type === 'gated' ? '#ef4444' : connection.connection_type === 'unlock' ? '#f59e0b' : '#94a3b8'}
-            strokeWidth={connection.connection_type === 'path' || !connection.connection_type ? 2 : 3}
-            dash={connection.connection_type === 'teleport' ? [10, 5] : undefined}
-            tension={0}
-            hitStrokeWidth={10}
-            onClick={onClick}
-        />
+        <Group onClick={onClick} cursor="pointer">
+            {/* Outline/Shadow for visibility */}
+            <Line
+                points={[fromX, fromY, cp1x, fromY, cp2x, toY, toX, toY]}
+                stroke="#000"
+                strokeWidth={5}
+                opacity={0.05}
+                tension={0.5}
+                bezier
+            />
+            {/* The actual line */}
+            <Line
+                points={[fromX, fromY, cp1x, fromY, cp2x, toY, toX, toY]}
+                stroke={connection.connection_type === 'gated' ? '#ef4444' : connection.connection_type === 'unlock' ? '#f59e0b' : '#94a3b8'}
+                strokeWidth={connection.connection_type === 'path' || !connection.connection_type ? 2.5 : 3.5}
+                dash={connection.connection_type === 'teleport' ? [10, 5] : undefined}
+                tension={0.5}
+                bezier
+                hitStrokeWidth={15}
+            />
+            {/* Glow effect on hover/selection could be added here */}
+        </Group>
     );
 });
 
@@ -154,6 +182,8 @@ export function WorldBuilder() {
     const [editingConnection, setEditingConnection] = useState<Connection | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+    const [isSuggestingConnections, setIsSuggestingConnections] = useState(false)
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
     const stageRef = useRef<Konva.Stage>(null)
@@ -178,11 +208,52 @@ export function WorldBuilder() {
     }, [projectId])
 
     useEffect(() => {
-        const loadNodes = async () => {
-            await fetchData()
-        }
-        loadNodes()
-    }, [fetchData])
+        if (!projectId) return;
+
+        void fetchData();
+
+        // Subscribe to realtime changes
+        const nodeChannel = supabase
+            .channel(`world_nodes_${projectId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'world_nodes',
+                filter: `project_id=eq.${projectId}`
+            }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setNodes(prev => [...prev, payload.new as Node]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setNodes(prev => prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n));
+                } else if (payload.eventType === 'DELETE') {
+                    setNodes(prev => prev.filter(n => n.id === payload.old.id));
+                }
+            })
+            .subscribe();
+
+        const connChannel = supabase
+            .channel(`world_connections_${projectId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'world_connections',
+                filter: `project_id=eq.${projectId}`
+            }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setConnections(prev => [...prev, payload.new as Connection]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setConnections(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                } else if (payload.eventType === 'DELETE') {
+                    setConnections(prev => prev.filter(c => c.id === payload.old.id));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(nodeChannel);
+            void supabase.removeChannel(connChannel);
+        };
+    }, [projectId, fetchData]);
 
     const addNode = async () => {
         if (!projectId) return
@@ -236,15 +307,27 @@ export function WorldBuilder() {
         setConnectingFrom(null)
     }
 
-    const handleDragEnd = async (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
-        const updatedNodes = nodes.map((n) => {
+    const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
+        setNodes(prev => prev.map((n) => {
             if (n.id === id) {
                 return { ...n, x: e.target.x(), y: e.target.y() }
             }
             return n
-        })
-        setNodes(updatedNodes)
-        await supabase.from('world_nodes').update({ x: e.target.x(), y: e.target.y() }).eq('id', id)
+        }))
+    }
+
+    const handleDragEnd = async (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
+        const x = e.target.x()
+        const y = e.target.y()
+
+        setNodes(prev => prev.map((n) => {
+            if (n.id === id) {
+                return { ...n, x, y }
+            }
+            return n
+        }))
+
+        await supabase.from('world_nodes').update({ x, y }).eq('id', id)
     }
 
     const saveNode = async () => {
@@ -341,6 +424,63 @@ export function WorldBuilder() {
         }
     }
 
+    const handleAISuggestConnections = async () => {
+        if (!projectId || nodes.length < 2) return
+        setIsSuggestingConnections(true)
+        try {
+            // Fetch GDD for context
+            const { data: docs } = await supabase
+                .from('project_documents')
+                .select('content, title')
+                .eq('project_id', projectId)
+                .eq('is_main_gdd', true)
+
+            const context = docs?.map(d => `Document: ${d.title}\nContent: ${JSON.stringify(d.content)}`).join("\n") || ""
+
+            const suggestions = await suggestWorldConnections(nodes, context)
+
+            for (const suggestion of suggestions) {
+                // Check if connection already exists
+                const exists = connections.some(c =>
+                    (c.from_node_id === suggestion.from_node_id && c.to_node_id === suggestion.to_node_id) ||
+                    (c.from_node_id === suggestion.to_node_id && c.to_node_id === suggestion.from_node_id)
+                )
+
+                if (!exists) {
+                    const { data, error } = await supabase
+                        .from('world_connections')
+                        .insert([{
+                            project_id: projectId,
+                            ...suggestion
+                        }])
+                        .select()
+
+                    if (data && !error) {
+                        setConnections(prev => [...prev, data[0]])
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("AI Suggestion failed:", error)
+        } finally {
+            setIsSuggestingConnections(false)
+        }
+    }
+
+    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+        if (!connectingFrom) return
+        const stage = e.target.getStage()
+        if (!stage) return
+        const pointer = stage.getPointerPosition()
+        if (!pointer) return
+
+        // Convert screen coordinates to stage coordinates
+        setMousePos({
+            x: (pointer.x - stage.x()) / stage.scaleX(),
+            y: (pointer.y - stage.y()) / stage.scaleY()
+        })
+    }
+
     const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
         e.evt.preventDefault();
         const scaleBy = 1.1;
@@ -412,6 +552,15 @@ export function WorldBuilder() {
                     <FileJson className="mr-2 h-4 w-4" />
                     JSON
                 </Button>
+                <Button
+                    variant="outline"
+                    className="shadow-lg bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+                    onClick={handleAISuggestConnections}
+                    disabled={isSuggestingConnections || nodes.length < 2}
+                >
+                    {isSuggestingConnections ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                    AI Suggest Links
+                </Button>
             </div>
 
             <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
@@ -441,6 +590,7 @@ export function WorldBuilder() {
                 scaleY={stageScale}
                 x={stagePos.x}
                 y={stagePos.y}
+                onMouseMove={handleMouseMove}
                 onDragEnd={(e) => {
                     // Update stage pos state if dragged stage (not node)
                     if (e.target === e.target.getStage()) {
@@ -493,12 +643,29 @@ export function WorldBuilder() {
                         )
                     })}
 
+                    {/* Draw ghost connection while linking */}
+                    {connectingFrom && (() => {
+                        const fromNode = nodes.find(n => n.id === connectingFrom);
+                        if (!fromNode) return null;
+                        const fromX = fromNode.x + (mousePos.x > fromNode.x + 110 ? 220 : 0);
+                        const fromY = fromNode.y + 70;
+                        return (
+                            <Line
+                                points={[fromX, fromY, mousePos.x, mousePos.y]}
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dash={[5, 5]}
+                            />
+                        );
+                    })()}
+
                     {/* Draw Nodes */}
                     {filteredNodes.map((node) => (
                         <MemoizedNode
                             key={node.id}
                             node={node}
                             isConnecting={connectingFrom === node.id}
+                            onDragMove={(e) => handleDragMove(e, node.id)}
                             onDragEnd={(e) => handleDragEnd(e, node.id)}
                             onDblClick={() => setEditingNode(node)}
                             onClick={() => connectingFrom && createConnection(node.id)}

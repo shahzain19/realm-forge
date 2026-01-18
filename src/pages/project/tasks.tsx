@@ -8,8 +8,10 @@ import { TaskListView } from "../../components/project/task-list-view"
 import { TaskDialog } from "../../components/project/task-dialog"
 import { ColumnDialog } from "../../components/project/column-dialog"
 import { Button } from "../../components/ui/button"
-import { Plus, Settings2, Loader2, LayoutGrid, List } from "lucide-react"
+import { Plus, Settings2, Loader2, LayoutGrid, List, Sparkles } from "lucide-react"
 import { cn } from "../../lib/utils"
+import { generateTasksFromPrompt } from "../../lib/gemini"
+import { supabase } from "../../lib/supabase"
 
 export function TasksPage() {
     const { projectId } = useParams()
@@ -21,11 +23,15 @@ export function TasksPage() {
     const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false)
     const [editingTask, setEditingTask] = useState<Task | null>(null)
     const [selectedColumn, setSelectedColumn] = useState<string | undefined>()
+    const [isAIGenerating, setIsAIGenerating] = useState(false)
 
     useEffect(() => {
         if (projectId) {
             fetchBoard(projectId)
             fetchProject(projectId).then(setProject)
+
+            const unsubscribe = useTaskStore.getState().subscribeToProject(projectId)
+            return () => unsubscribe()
         }
     }, [projectId, fetchBoard, fetchProject])
 
@@ -46,6 +52,51 @@ export function TasksPage() {
         await addColumn(projectId, "Todo")
         await addColumn(projectId, "In Progress")
         await addColumn(projectId, "Done")
+    }
+
+    const handleAIGenerate = async () => {
+        const prompt = window.prompt("What goals should I create tasks for? (e.g., 'Implement player inventory based on GDD')")
+        if (!prompt || !projectId) return
+
+        setIsAIGenerating(true)
+        try {
+            // Fetch main GDD for context
+            const { data: docs } = await supabase
+                .from('project_documents')
+                .select('content, title')
+                .eq('project_id', projectId)
+                .eq('is_main_gdd', true)
+
+            const context = docs?.map(d => `Document: ${d.title}\nContent: ${JSON.stringify(d.content)}`).join("\n") || ""
+            const existingTaskTitles = tasks.map(t => t.title)
+
+            const aiTasks = await generateTasksFromPrompt(prompt, context, existingTaskTitles)
+
+            const todoColumn = columns.find(c => c.name.toLowerCase() === 'todo')
+            const targetColumnId = todoColumn?.id || columns[0]?.id
+
+            if (!targetColumnId) return
+
+            for (const taskData of aiTasks) {
+                await useTaskStore.getState().addTask({
+                    ...taskData,
+                    project_id: projectId,
+                    column_id: targetColumnId,
+                    order_index: 0,
+                    subtasks: taskData.subtasks.map(st => ({
+                        ...st,
+                        id: st.id || crypto.randomUUID(),
+                        completed: st.completed
+                    }))
+                })
+            }
+            alert(`Generated ${aiTasks.length} tasks!`)
+        } catch (error) {
+            console.error("AI Generation failed:", error)
+            alert("AI task generation failed.")
+        } finally {
+            setIsAIGenerating(false)
+        }
     }
 
     if (tasksLoading) {
@@ -91,6 +142,16 @@ export function TasksPage() {
                     <Button variant="outline" size="sm" className="glass" onClick={() => setIsColumnDialogOpen(true)}>
                         <Settings2 className="mr-2 h-4 w-4" />
                         Customize
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary hover:text-primary hover:bg-primary/10 transition-all border border-primary/20"
+                        onClick={handleAIGenerate}
+                        disabled={isAIGenerating}
+                    >
+                        {isAIGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        {isAIGenerating ? "Generating..." : "AI Generate"}
                     </Button>
                     <Button size="sm" onClick={() => handleAddTask(columns[0]?.id)}>
                         <Plus className="mr-2 h-4 w-4" />

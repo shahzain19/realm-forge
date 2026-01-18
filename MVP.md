@@ -177,7 +177,7 @@ Avoid corporate / Netflix-style UI.
 
 ## Typography
 
-* Primary Font: Poppins
+* Primary Font: Inter
 * Clear hierarchy
 * Large readable headings
 

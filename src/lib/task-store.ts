@@ -50,6 +50,7 @@ interface TaskState {
     reorderColumn: (columnId: string, newIndex: number) => Promise<void>;
     reorderTask: (taskId: string, newIndex: number) => Promise<void>;
     toggleSubtask: (taskId: string, subtaskId: string) => Promise<void>;
+    subscribeToProject: (projectId: string) => () => void;
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -235,5 +236,42 @@ export const useTaskStore = create<TaskState>((set, get) => ({
                 tasks: state.tasks.map(t => t.id === taskId ? { ...t, subtasks: task.subtasks } : t)
             }));
         }
+    },
+
+    subscribeToProject: (projectId) => {
+        const taskChannel = supabase
+            .channel(`public:tasks:${projectId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `project_id=eq.${projectId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    set((state) => ({ tasks: [...state.tasks, payload.new as Task] }));
+                } else if (payload.eventType === 'UPDATE') {
+                    set((state) => ({
+                        tasks: state.tasks.map((t) => (t.id === payload.new.id ? { ...t, ...payload.new } : t)),
+                    }));
+                } else if (payload.eventType === 'DELETE') {
+                    set((state) => ({ tasks: state.tasks.filter((t) => t.id === payload.old.id) }));
+                }
+            })
+            .subscribe();
+
+        const columnChannel = supabase
+            .channel(`public:task_columns:${projectId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'task_columns', filter: `project_id=eq.${projectId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    set((state) => ({ columns: [...state.columns, payload.new as TaskColumn] }));
+                } else if (payload.eventType === 'UPDATE') {
+                    set((state) => ({
+                        columns: state.columns.map((c) => (c.id === payload.new.id ? { ...c, ...payload.new } : c)),
+                    }));
+                } else if (payload.eventType === 'DELETE') {
+                    set((state) => ({ columns: state.columns.filter((c) => c.id !== payload.old.id) }));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(taskChannel);
+            void supabase.removeChannel(columnChannel);
+        };
     },
 }));

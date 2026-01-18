@@ -3,10 +3,11 @@ import { useParams } from "react-router-dom"
 import { supabase } from "../../lib/supabase"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
-import { Plus, Trash2, ArrowRight, Loader2, X, FileJson, FileSpreadsheet } from "lucide-react"
+import { Plus, Trash2, ArrowRight, Loader2, X, FileJson, FileSpreadsheet, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { exportToJson, exportToCsv } from "../../lib/export-utils"
+import { generateSystemsFromPrompt, suggestSystemIO } from "../../lib/gemini"
 
 interface System {
     id: string
@@ -21,6 +22,8 @@ export function SystemsDesigner() {
     const [systems, setSystems] = useState<System[]>([])
     const [loading, setLoading] = useState(true)
     const [editingSystem, setEditingSystem] = useState<System | null>(null)
+    const [isGenerating, setIsGenerating] = useState(false)
+    const [isSuggestingIO, setIsSuggestingIO] = useState(false)
 
     const fetchSystems = useCallback(async () => {
         if (!projectId) return
@@ -38,11 +41,32 @@ export function SystemsDesigner() {
     }, [projectId])
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            void fetchSystems()
-        }, 0)
-        return () => clearTimeout(timer)
-    }, [fetchSystems])
+        if (!projectId) return;
+
+        void fetchSystems()
+
+        const channel = supabase
+            .channel(`systems_${projectId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'systems',
+                filter: `project_id=eq.${projectId}`
+            }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setSystems(prev => [...prev, payload.new as System]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setSystems(prev => prev.map(s => s.id === payload.new.id ? { ...s, ...payload.new } : s));
+                } else if (payload.eventType === 'DELETE') {
+                    setSystems(prev => prev.filter(s => s.id !== payload.old.id));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(channel);
+        };
+    }, [projectId, fetchSystems])
 
     const addSystem = async () => {
         if (!projectId) return
@@ -61,6 +85,69 @@ export function SystemsDesigner() {
 
         if (!error && data) {
             setSystems([...systems, data[0]])
+        }
+    }
+
+    const handleAIGenerate = async () => {
+        const prompt = window.prompt("What systems should I design? (e.g. 'Survival loop with crafted items')")
+        if (!prompt || !projectId) return
+
+        setIsGenerating(true)
+        try {
+            const { data: docs } = await supabase
+                .from('project_documents')
+                .select('content, title')
+                .eq('project_id', projectId)
+                .eq('is_main_gdd', true)
+
+            const context = docs?.map(d => `Document: ${d.title}\nContent: ${JSON.stringify(d.content)}`).join("\n") || ""
+            const aiSystems = await generateSystemsFromPrompt(prompt, context)
+
+            for (const s of aiSystems) {
+                const { data, error } = await supabase
+                    .from('systems')
+                    .insert([{
+                        project_id: projectId,
+                        name: s.name,
+                        description: s.description,
+                        inputs: s.inputs,
+                        outputs: s.outputs
+                    }])
+                    .select()
+
+                if (data && !error) {
+                    setSystems(prev => [...prev, data[0]])
+                }
+            }
+        } catch (error) {
+            console.error("AI Generation failed:", error)
+        } finally {
+            setIsGenerating(false)
+        }
+    }
+
+    const handleAISuggestIO = async () => {
+        if (!editingSystem || !projectId) return
+        setIsSuggestingIO(true)
+        try {
+            const { data: docs } = await supabase
+                .from('project_documents')
+                .select('content, title')
+                .eq('project_id', projectId)
+                .eq('is_main_gdd', true)
+
+            const context = docs?.map(d => `Document: ${d.title}\nContent: ${JSON.stringify(d.content)}`).join("\n") || ""
+            const suggestions = await suggestSystemIO(editingSystem.name, editingSystem.description || "", context)
+
+            setEditingSystem({
+                ...editingSystem,
+                inputs: Array.from(new Set([...(editingSystem.inputs || []), ...suggestions.inputs])),
+                outputs: Array.from(new Set([...(editingSystem.outputs || []), ...suggestions.outputs]))
+            })
+        } catch (error) {
+            console.error("AI IO Suggestion failed:", error)
+        } finally {
+            setIsSuggestingIO(false)
         }
     }
 
@@ -153,6 +240,15 @@ export function SystemsDesigner() {
                     <Button variant="outline" size="sm" onClick={() => exportSystems('csv')}>
                         <FileSpreadsheet className="mr-2 h-4 w-4" />
                         CSV
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                        onClick={handleAIGenerate}
+                        disabled={isGenerating}
+                    >
+                        {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        AI Create
                     </Button>
                     <Button onClick={addSystem}>
                         <Plus className="mr-2 h-4 w-4" />
@@ -247,7 +343,19 @@ export function SystemsDesigner() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <label className="text-sm font-medium">Inputs</label>
-                                        <Button size="sm" variant="ghost" onClick={() => addIO('inputs')}><Plus className="h-3 w-3" /></Button>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-7 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                                                onClick={handleAISuggestIO}
+                                                disabled={isSuggestingIO}
+                                            >
+                                                {isSuggestingIO ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                                                Suggest
+                                            </Button>
+                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => addIO('inputs')}><Plus className="h-3 w-3" /></Button>
+                                        </div>
                                     </div>
                                     <div className="space-y-2 max-h-[150px] overflow-auto border rounded p-2">
                                         {editingSystem.inputs?.map((input, i) => (

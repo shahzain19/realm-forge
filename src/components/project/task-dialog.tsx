@@ -11,6 +11,9 @@ import { Plus, X, CheckCircle2, Circle } from "lucide-react"
 import { useProjectStore } from "../../lib/project-store"
 import { ScrollArea } from "../ui/scroll-area"
 import { cn } from "../../lib/utils"
+import { suggestSubtasks } from "../../lib/gemini"
+import { supabase } from "../../lib/supabase"
+import { Sparkles, Loader2 } from "lucide-react"
 
 interface TaskDialogProps {
     open: boolean
@@ -32,6 +35,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
     const [activeTab, setActiveTab] = useState<'general' | 'checklist'>('general')
     const [newSubtask, setNewSubtask] = useState("")
     const [newLabel, setNewLabel] = useState("")
+    const [isSuggesting, setIsSuggesting] = useState(false)
 
     useEffect(() => {
         if (task) {
@@ -100,6 +104,34 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
         if (task?.id) {
             await deleteTask(task.id)
             onOpenChange(false)
+        }
+    }
+
+    const handleSuggestSubtasks = async () => {
+        if (!title) return
+        setIsSuggesting(true)
+        try {
+            // Fetch some context
+            const { data: docs } = await supabase
+                .from('project_documents')
+                .select('content, title')
+                .eq('project_id', projectId)
+                .eq('is_main_gdd', true)
+
+            const context = docs?.map(d => `Document: ${d.title}\nContent: ${JSON.stringify(d.content)}`).join("\n") || ""
+            const suggestions = await suggestSubtasks(title, description, context)
+
+            const newSubtasks = suggestions.map(text => ({
+                id: crypto.randomUUID(),
+                text: text,
+                completed: false
+            }))
+
+            setSubtasks([...subtasks, ...newSubtasks])
+        } catch (error) {
+            console.error("Suggestion failed:", error)
+        } finally {
+            setIsSuggesting(false)
         }
     }
 
@@ -207,6 +239,15 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
                                 />
                                 <Button size="icon" onClick={addSubtask}>
                                     <Plus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                                    onClick={handleSuggestSubtasks}
+                                    disabled={isSuggesting || !title}
+                                >
+                                    {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                    AI Suggest
                                 </Button>
                             </div>
 

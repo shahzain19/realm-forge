@@ -15,6 +15,9 @@ import {
 } from "lucide-react"
 import { GDDTemplateMarketplace } from './gdd-template-marketplace'
 import { downloadFile } from '../../lib/export-utils'
+import { extractTasksFromText } from '../../lib/gemini'
+import { useTaskStore } from '../../lib/task-store'
+import { Sparkles } from "lucide-react"
 
 interface DocumentEditorProps {
     documentId?: string;
@@ -26,7 +29,10 @@ export function DocumentEditor({ documentId, onBack }: DocumentEditorProps) {
     const activeDocId = documentId || paramDocId
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(true)
+    const [extracting, setExtracting] = useState(false)
     const [title, setTitle] = useState('')
+    const { addTask, columns, fetchBoard } = useTaskStore()
+    const { projectId } = useParams()
 
     const editor = useEditor({
         extensions: [
@@ -181,6 +187,50 @@ export function DocumentEditor({ documentId, onBack }: DocumentEditorProps) {
         downloadFile(markdown, `${title.replace(/\s+/g, '-').toLowerCase()}.md`, 'text/markdown');
     }
 
+    const handleAIExtract = async () => {
+        if (!editor || !projectId) return
+        setExtracting(true)
+
+        try {
+            // Get text content from editor
+            const text = editor.getText()
+
+            // Fetch current board to ensure we have columns
+            await fetchBoard(projectId)
+            const todoColumn = useTaskStore.getState().columns.find(c => c.name.toLowerCase() === 'todo')
+            const targetColumnId = todoColumn?.id || columns[0]?.id
+
+            if (!targetColumnId) {
+                alert("Please initialize your task board first.")
+                return
+            }
+
+            const tasksOnBoard = useTaskStore.getState().tasks.map(t => t.title)
+            const tasks = await extractTasksFromText(text, `Document Title: ${title}`, tasksOnBoard)
+
+            for (const taskData of tasks) {
+                await addTask({
+                    ...taskData,
+                    project_id: projectId,
+                    column_id: targetColumnId,
+                    order_index: 0,
+                    subtasks: taskData.subtasks.map(st => ({
+                        ...st,
+                        id: st.id || crypto.randomUUID(),
+                        completed: st.completed
+                    }))
+                })
+            }
+
+            alert(`Successfully extracted ${tasks.length} tasks to your board!`)
+        } catch (error) {
+            console.error("Extraction failed:", error)
+            alert("Failed to extract tasks. Check your API key.")
+        } finally {
+            setExtracting(false)
+        }
+    }
+
 
     if (loading) {
         return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
@@ -268,6 +318,16 @@ export function DocumentEditor({ documentId, onBack }: DocumentEditorProps) {
                     <div className="text-xs text-muted-foreground self-center">
                         {saving ? "Saving..." : "Saved"}
                     </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleAIExtract}
+                        disabled={extracting}
+                        className="text-primary hover:text-primary hover:bg-primary/10 gap-2"
+                    >
+                        {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        {extracting ? "Extracting..." : "AI Extract"}
+                    </Button>
                     <Button variant="outline" size="sm" onClick={exportToMarkdown}>
                         <Download className="mr-2 h-4 w-4" />
                         MD

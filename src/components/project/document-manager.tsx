@@ -6,6 +6,9 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/
 import { Loader2, Plus, FileText, Trash2, Edit2, BookOpen } from 'lucide-react'
 import { DocumentEditor } from './document-editor'
 import { Badge } from '../ui/badge'
+import { Sparkles } from 'lucide-react'
+import { extractTasksFromText } from '../../lib/gemini'
+import { useTaskStore } from '../../lib/task-store'
 
 interface Document {
     id: string
@@ -19,6 +22,7 @@ export function DocumentManager() {
     const [documents, setDocuments] = useState<Document[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
+    const [isMultiExtracting, setIsMultiExtracting] = useState(false)
 
     const fetchDocuments = useCallback(async () => {
         if (!projectId) return
@@ -94,6 +98,59 @@ export function DocumentManager() {
         }
     }
 
+    const handleMultiExtract = async () => {
+        if (!projectId || documents.length === 0) return
+        setIsMultiExtracting(true)
+        try {
+            // 1. Fetch full content for all documents
+            const { data: fullDocs } = await supabase
+                .from('project_documents')
+                .select('title, content')
+                .eq('project_id', projectId)
+
+            if (!fullDocs) return
+
+            // 2. Aggregate content
+            const aggregatedContent = fullDocs.map(d => `## ${d.title}\n${JSON.stringify(d.content)}`).join("\n\n")
+
+            // 3. Get existing tasks to avoid duplicates
+            await useTaskStore.getState().fetchBoard(projectId)
+            const tasksOnBoard = useTaskStore.getState().tasks.map(t => t.title)
+            const todoColumn = useTaskStore.getState().columns.find(c => c.name.toLowerCase() === 'todo')
+            const targetColumnId = todoColumn?.id || useTaskStore.getState().columns[0]?.id
+
+            if (!targetColumnId) {
+                alert("Please initialize your task board first.")
+                return
+            }
+
+            // 4. AI Extract
+            const aiTasks = await extractTasksFromText(aggregatedContent, "Aggregate of all project documents.", tasksOnBoard)
+
+            // 5. Create tasks
+            for (const taskData of aiTasks) {
+                await useTaskStore.getState().addTask({
+                    ...taskData,
+                    project_id: projectId,
+                    column_id: targetColumnId,
+                    order_index: 0,
+                    subtasks: taskData.subtasks.map(st => ({
+                        ...st,
+                        id: st.id || crypto.randomUUID(),
+                        completed: st.completed
+                    }))
+                })
+            }
+
+            alert(`AI successfully extracted ${aiTasks.length} new tasks from ${fullDocs.length} documents!`)
+        } catch (error) {
+            console.error("Multi-extract failed:", error)
+            alert("Failed to perform multi-document extraction.")
+        } finally {
+            setIsMultiExtracting(false)
+        }
+    }
+
     if (selectedDocId) {
         return <DocumentEditor documentId={selectedDocId} onBack={() => {
             setSelectedDocId(null)
@@ -112,10 +169,21 @@ export function DocumentManager() {
                     <h1 className="text-3xl font-bold tracking-tight">Document Manager</h1>
                     <p className="text-muted-foreground mt-1">Manage your project design documents, research, and lore.</p>
                 </div>
-                <Button onClick={createDocument} className="gap-2 shadow-sm">
-                    <Plus className="h-4 w-4" />
-                    New Document
-                </Button>
+                <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={handleMultiExtract}
+                        disabled={isMultiExtracting || documents.length === 0}
+                        className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                    >
+                        {isMultiExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        {isMultiExtracting ? "Analysing..." : "AI Multi-Extract"}
+                    </Button>
+                    <Button onClick={createDocument} className="gap-2 shadow-sm">
+                        <Plus className="h-4 w-4" />
+                        New Document
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
