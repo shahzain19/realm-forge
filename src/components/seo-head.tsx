@@ -7,13 +7,15 @@ interface SEOHeadProps {
     canonicalUrl?: string;
     ogImage?: string;
     type?: string;
+    schema?: Record<string, any>;
 }
 
-export function SEOHead({ title, description, keywords, canonicalUrl, ogImage, type = 'website' }: SEOHeadProps) {
+export function SEOHead({ title, description, keywords, canonicalUrl, ogImage, type = 'website', schema }: SEOHeadProps) {
     useEffect(() => {
         // Title
         document.title = title;
 
+        // ... existing meta logic ...
         // Helper to set meta tag
         const setMeta = (name: string, content: string) => {
             let element = document.querySelector(`meta[name="${name}"]`);
@@ -68,7 +70,18 @@ export function SEOHead({ title, description, keywords, canonicalUrl, ogImage, t
             link.setAttribute('href', canonicalUrl);
         }
 
-    }, [title, description, keywords, canonicalUrl, ogImage, type]);
+        // Schema.org JSON-LD
+        if (schema) {
+            let script = document.querySelector(`script[type="application/ld+json"]`);
+            if (!script) {
+                script = document.createElement('script');
+                script.setAttribute('type', 'application/ld+json');
+                document.head.appendChild(script);
+            }
+            script.textContent = JSON.stringify(schema);
+        }
+
+    }, [title, description, keywords, canonicalUrl, ogImage, type, schema]);
 
     return null; // This component handles side effects only
 }

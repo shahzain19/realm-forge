@@ -13,12 +13,32 @@ import {
     Share2
 } from "lucide-react"
 import HeroArt from "../assets/images/hero-art.png"
+import { SEOHead } from "../components/seo-head"
 
 export function LandingPage() {
     const { user } = useAuthStore()
 
     return (
         <div className="min-h-screen bg-white text-zinc-900 selection:bg-primary/10 overflow-x-hidden">
+            <SEOHead
+                title="RealmForge - The Ultimate RPG World Building Engine"
+                description="Collaborative world-building platform for game masters and narrative designers. Create interactive maps, GDDs, and RPG systems in real-time."
+                keywords={['world building', 'gdd tools', 'rpg campaign manager', 'game design software', 'collaborative writing']}
+                canonicalUrl="https://realm-forge-nine.vercel.app/"
+                schema={{
+                    "@context": "https://schema.org",
+                    "@type": "SoftwareApplication",
+                    "name": "RealmForge",
+                    "applicationCategory": "Game Development Tool",
+                    "operatingSystem": "Web",
+                    "offers": {
+                        "@type": "Offer",
+                        "price": "0",
+                        "priceCurrency": "USD"
+                    },
+                    "description": "The industrial-grade workbench for narrative designers and world-builders. Collaborative real-time tools for RPG creation."
+                }}
+            />
             {/* Header / Nav */}
             <nav className="fixed top-0 w-full z-50 glass-premium border-b border-zinc-100">
                 <div className="container mx-auto px-6 h-20 flex items-center justify-between">
