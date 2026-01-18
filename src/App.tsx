@@ -13,6 +13,8 @@ import ProjectSettings from "./pages/project/settings"
 import { AcceptInvitation } from "./pages/accept-invitation"
 import { ProtectedRoute } from "./components/layout/protected-route"
 import { LandingPage } from "./pages/landing"
+import ProjectShowcasePage from "./pages/public/project-showcase"
+import MilestonesPage from "./pages/project/milestones"
 
 function App() {
   return (
@@ -21,6 +23,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/" element={<LandingPage />} />
+        <Route path="/p/:projectId" element={<ProjectShowcasePage />} />
         <Route
           path="/dashboard"
           element={
@@ -43,6 +46,7 @@ function App() {
           <Route path="docs" element={<DocumentManager />} />
           <Route path="world" element={<WorldBuilder />} />
           <Route path="systems" element={<SystemsDesigner />} />
+          <Route path="milestones" element={<MilestonesPage />} />
           <Route path="settings" element={<ProjectSettings />} />
         </Route>
         <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />

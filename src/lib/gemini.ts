@@ -246,3 +246,35 @@ export async function suggestSystemIO(name: string, description: string, project
         return { inputs: [], outputs: [] };
     }
 }
+
+export async function generateMilestonesFromContext(userPrompt: string, projectContext: string): Promise<{ title: string; description: string; due_date: string | null; status: 'pending' }[]> {
+    const prompt = `
+    You are a seasoned game producer.
+    Create a project roadmap with clear milestones based on the following request and project context.
+    
+    REQUEST: "${userPrompt}"
+    
+    PROJECT CONTEXT:
+    ${projectContext}
+    
+    RULES:
+    - Return ONLY a JSON array of objects: [{"title": "string", "description": "string", "due_date": "YYYY-MM-DD" | null, "status": "pending"}]
+    - Create 3-6 major milestones that cover the described scope.
+    - "due_date" should be a realistic projection starting from today (assume today is ${new Date().toISOString().split('T')[0]}), spaced out by weeks/months.
+    - Descriptions should be high-level but specific to the features/content.
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const textResponse = response.text();
+        const jsonMatch = textResponse.match(/\[.*\]/s);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return [];
+    } catch (error) {
+        console.error("Milestone Generation Error:", error);
+        return [];
+    }
+}

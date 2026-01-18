@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Stage, Layer, Rect, Text, Group, Line, Circle } from 'react-konva';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
-import { Plus, Loader2, Trash2, Search, Download, X, Upload, FileJson } from 'lucide-react';
+import { Plus, Loader2, Trash2, Search, Download, X, Upload, FileJson, CheckCircle2, Circle as CircleIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
@@ -25,6 +25,7 @@ interface Node {
     gameplay_notes?: string;
     lore?: string;
     tags?: string[];
+    linked_tasks?: string[];
     metadata?: Record<string, unknown>;
 }
 
@@ -184,6 +185,9 @@ export function WorldBuilder() {
     const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
     const [isSuggestingConnections, setIsSuggestingConnections] = useState(false)
+    // Task Linking State
+    const [availableTasks, setAvailableTasks] = useState<{ id: string, title: string }[]>([])
+    const [taskSearch, setTaskSearch] = useState("")
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
     const stageRef = useRef<Konva.Stage>(null)
@@ -198,6 +202,12 @@ export function WorldBuilder() {
 
     const fetchData = useCallback(async () => {
         if (!projectId) return
+
+        setLoading(true);
+
+        // Fetch tasks for linking
+        const { data: tasksData } = await supabase.from('tasks').select('id, title').eq('project_id', projectId)
+        if (tasksData) setAvailableTasks(tasksData)
 
         const { data: nodesData } = await supabase.from('world_nodes').select('*').eq('project_id', projectId)
         const { data: connData } = await supabase.from('world_connections').select('*').eq('project_id', projectId)
@@ -273,6 +283,7 @@ export function WorldBuilder() {
             setNodes([...nodes, data[0]])
         } else if (error) {
             console.error("Error adding node:", error)
+            alert(`Error adding location: ${error.message}`)
         }
     };
 
@@ -516,6 +527,16 @@ export function WorldBuilder() {
 
     const exportData = () => {
         exportToJson({ nodes, connections }, `world-data-${projectId}.json`)
+    }
+
+    const toggleTaskLink = (taskId: string) => {
+        if (!editingNode) return
+        const currentLinks = editingNode.linked_tasks || []
+        const newLinks = currentLinks.includes(taskId)
+            ? currentLinks.filter(id => id !== taskId)
+            : [...currentLinks, taskId]
+
+        setEditingNode({ ...editingNode, linked_tasks: newLinks })
     }
 
     const filteredNodes = nodes.filter(n =>
@@ -823,6 +844,64 @@ export function WorldBuilder() {
                                             </Button>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="grid w-full gap-2">
+                                <label className="text-xs font-semibold uppercase text-muted-foreground">Linked Tasks</label>
+                                <div className="space-y-4 rounded-lg border bg-muted/40 p-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableTasks
+                                            .filter(t => (editingNode.linked_tasks || []).includes(t.id))
+                                            .map(task => (
+                                                <div key={task.id} className="flex items-center gap-2 bg-background border rounded-full px-3 py-1 text-sm shadow-sm">
+                                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                                    <span className="truncate max-w-[150px]">{task.title}</span>
+                                                    <button onClick={() => toggleTaskLink(task.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        {(editingNode.linked_tasks || []).length === 0 && (
+                                            <span className="text-sm text-muted-foreground italic">No tasks linked.</span>
+                                        )}
+                                    </div>
+
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search tasks to link..."
+                                            className="pl-9 bg-background"
+                                            value={taskSearch}
+                                            onChange={(e) => setTaskSearch(e.target.value)}
+                                        />
+                                    </div>
+
+                                    {taskSearch && (
+                                        <div className="max-h-32 overflow-y-auto rounded-md border bg-background text-sm">
+                                            {availableTasks
+                                                .filter(t => !(editingNode.linked_tasks || []).includes(t.id) && t.title.toLowerCase().includes(taskSearch.toLowerCase()))
+                                                .map(task => (
+                                                    <div
+                                                        key={task.id}
+                                                        className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer transition-colors"
+                                                        onClick={() => {
+                                                            toggleTaskLink(task.id)
+                                                            setTaskSearch("")
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <CircleIcon className="h-3 w-3 text-muted-foreground" />
+                                                            <span>{task.title}</span>
+                                                        </div>
+                                                        <Plus className="h-3 w-3 text-primary" />
+                                                    </div>
+                                                ))}
+                                            {availableTasks.filter(t => !(editingNode.linked_tasks || []).includes(t.id) && t.title.toLowerCase().includes(taskSearch.toLowerCase())).length === 0 && (
+                                                <div className="p-2 text-center text-muted-foreground">No matching tasks found.</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

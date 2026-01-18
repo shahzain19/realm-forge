@@ -27,6 +27,7 @@ export interface Task {
     labels: string[];
     subtasks: Subtask[];
     assignee_id: string | null;
+    linked_nodes: string[];
     created_at: string;
 }
 

@@ -9,6 +9,13 @@ export interface Project {
     owner_id: string
     created_at: string
     updated_at: string
+    is_public: boolean
+    public_settings: {
+        show_overview: boolean
+        show_milestones: boolean
+        show_team: boolean
+        primary_color?: string
+    } | null
 }
 
 export interface Member {
@@ -31,6 +38,7 @@ interface ProjectState {
     fetchProject: (id: string) => Promise<Project | null>
     fetchMembers: (workspaceId: string) => Promise<void>
     inviteMember: (workspaceId: string, email: string) => Promise<string | null>
+    updatePublicSettings: (id: string, isPublic: boolean, settings?: Project['public_settings']) => Promise<void>
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -163,5 +171,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
 
         return token
+    },
+    updatePublicSettings: async (id: string, isPublic: boolean, settings?: Project['public_settings']) => {
+        const updates: any = { is_public: isPublic }
+        if (settings) updates.public_settings = settings
+
+        const { error } = await supabase
+            .from('projects')
+            .update(updates)
+            .eq('id', id)
+
+        if (error) {
+            set({ error: error.message })
+        } else {
+            set({
+                projects: get().projects.map(p => p.id === id ? { ...p, ...updates } : p)
+            })
+        }
     }
 }))

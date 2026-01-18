@@ -5,13 +5,14 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
-import { Loader2, UserPlus, Trash2, Mail, Copy, Check } from 'lucide-react'
+import { Loader2, UserPlus, Trash2, Mail, Copy, Check, Download, Globe } from 'lucide-react'
+import { generateProjectBundle } from '../../lib/export-utils'
 
 
 export default function ProjectSettings() {
     const { projectId } = useParams()
     const navigate = useNavigate()
-    const { projects, members, fetchMembers, inviteMember, updateProject, deleteProject } = useProjectStore()
+    const { projects, members, fetchMembers, inviteMember, updateProject, deleteProject, updatePublicSettings } = useProjectStore()
 
     const project = projects.find(p => p.id === projectId)
 
@@ -22,6 +23,27 @@ export default function ProjectSettings() {
     const [inviteLink, setInviteLink] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
     const [saving, setSaving] = useState(false)
+
+    // Publishing State
+    const [isPublic, setIsPublic] = useState(project?.is_public || false)
+    const [publicSettings, setPublicSettings] = useState(project?.public_settings || { show_overview: true, show_milestones: true, show_team: true })
+    const [publishing, setPublishing] = useState(false)
+    const [exporting, setExporting] = useState(false)
+
+    // ... init ...
+
+    const handleExport = async () => {
+        if (!projectId) return
+        setExporting(true)
+        try {
+            await generateProjectBundle(projectId)
+        } catch (e) {
+            console.error(e)
+            alert("Export failed")
+        } finally {
+            setExporting(false)
+        }
+    }
 
     useEffect(() => {
         async function init() {
@@ -60,10 +82,17 @@ export default function ProjectSettings() {
         setInviting(true)
         const token = await inviteMember(project.workspace_id, inviteEmail)
         if (token) {
-            setInviteLink(`${window.location.origin}/accept-invitation/${token}`)
+            setInviteLink(`https://realm-forge-nine.vercel.app/accept-invitation/${token}`)
             setInviteEmail('')
         }
         setInviting(false)
+    }
+
+    const handlePublish = async () => {
+        if (!projectId) return
+        setPublishing(true)
+        await updatePublicSettings(projectId, isPublic, publicSettings)
+        setPublishing(false)
     }
 
     const copyToClipboard = () => {
@@ -107,6 +136,102 @@ export default function ProjectSettings() {
                     <CardFooter className="border-t px-6 py-4">
                         <Button onClick={handleSave} disabled={saving}>
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                        </Button>
+                    </CardFooter>
+                </Card>
+
+                {/* Publishing */}
+                <Card className="border-indigo-100 overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-indigo-50 to-white">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-indigo-950 flex items-center gap-2">
+                                    <Globe className="w-5 h-5 text-indigo-500" />
+                                    Public Showcase
+                                </CardTitle>
+                                <CardDescription>Share a read-only view of your project with the world.</CardDescription>
+                            </div>
+                            {isPublic && (
+                                <Badge className="bg-indigo-500 hover:bg-indigo-600">Live</Badge>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-6">
+                        <div className="flex items-center justify-between p-4 rounded-lg border bg-secondary/20">
+                            <div>
+                                <h4 className="font-semibold text-sm">Make Project Public</h4>
+                                <p className="text-xs text-muted-foreground">Anyone with the link can view selected parts of this project.</p>
+                            </div>
+                            <div className="flex items-center h-6">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                                    checked={isPublic}
+                                    onChange={(e) => setIsPublic(e.target.checked)}
+                                />
+                            </div>
+                        </div>
+
+                        {isPublic && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium">Visibility Settings</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <label className="flex items-center gap-2 text-sm p-3 border rounded-md cursor-pointer hover:bg-secondary/50">
+                                            <input
+                                                type="checkbox"
+                                                checked={publicSettings?.show_overview}
+                                                onChange={(e) => setPublicSettings({ ...publicSettings!, show_overview: e.target.checked })}
+                                                className="rounded border-gray-300 text-indigo-600"
+                                            />
+                                            Show Wiki (GDD)
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm p-3 border rounded-md cursor-pointer hover:bg-secondary/50">
+                                            <input
+                                                type="checkbox"
+                                                checked={publicSettings?.show_milestones}
+                                                onChange={(e) => setPublicSettings({ ...publicSettings!, show_milestones: e.target.checked })}
+                                                className="rounded border-gray-300 text-indigo-600"
+                                            />
+                                            Show Roadmap
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm p-3 border rounded-md cursor-pointer hover:bg-secondary/50">
+                                            <input
+                                                type="checkbox"
+                                                checked={publicSettings?.show_team}
+                                                onChange={(e) => setPublicSettings({ ...publicSettings!, show_team: e.target.checked })}
+                                                className="rounded border-gray-300 text-indigo-600"
+                                            />
+                                            Show Team
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 p-3 bg-indigo-50 text-indigo-900 rounded-md border border-indigo-100">
+                                    <Globe className="h-4 w-4 flex-shrink-0" />
+                                    <code className="flex-1 text-xs truncate bg-transparent border-none focus:ring-0 p-0">
+                                        https://realm-forge-nine.vercel.app/p/{projectId}
+                                    </code>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 hover:bg-indigo-100"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`https://realm-forge-nine.vercel.app/p/${projectId}`)
+                                        }}
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="border-t bg-slate-50 px-6 py-4 flex justify-between">
+                        <Button variant="ghost" asChild>
+                            <a href={`/p/${projectId}`} target="_blank" rel="noreferrer">Preview Page</a>
+                        </Button>
+                        <Button onClick={handlePublish} disabled={publishing} className={isPublic ? "bg-indigo-600 hover:bg-indigo-700" : ""}>
+                            {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Update Publishing"}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -171,20 +296,35 @@ export default function ProjectSettings() {
                     </CardContent>
                 </Card>
 
-                {/* Danger Zone */}
-                <Card className="border-destructive/50">
-                    <CardHeader>
-                        <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                        <CardDescription>Permanently delete this project and all its data.</CardDescription>
-                    </CardHeader>
-                    <CardFooter className="border-t border-destructive/20 bg-destructive/5 px-6 py-4">
-                        <Button variant="destructive" onClick={handleDelete}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Project
-                        </Button>
-                    </CardFooter>
-                </Card>
             </div>
+
+            {/* Data Export */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Data Export</CardTitle>
+                    <CardDescription>Download all your project data as a portable bundle (JSON/Markdown).</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleExport} disabled={exporting} variant="outline" className="w-full sm:w-auto">
+                        {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Export Project Bundle (.zip)
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Danger Zone */}
+            <Card className="border-destructive/50">
+                <CardHeader>
+                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    <CardDescription>Permanently delete this project and all its data.</CardDescription>
+                </CardHeader>
+                <CardFooter className="border-t border-destructive/20 bg-destructive/5 px-6 py-4">
+                    <Button variant="destructive" onClick={handleDelete}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Project
+                    </Button>
+                </CardFooter>
+            </Card>
         </div>
     )
 }

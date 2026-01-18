@@ -7,7 +7,7 @@ import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Select, SelectItem } from "../ui/select"
 import { Badge } from "../ui/badge"
-import { Plus, X, CheckCircle2, Circle } from "lucide-react"
+import { Plus, X, CheckCircle2, Circle, Search } from "lucide-react"
 import { useProjectStore } from "../../lib/project-store"
 import { ScrollArea } from "../ui/scroll-area"
 import { cn } from "../../lib/utils"
@@ -32,10 +32,22 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
     const [labels, setLabels] = useState<string[]>([])
     const [subtasks, setSubtasks] = useState<Task['subtasks']>([])
     const [assigneeId, setAssigneeId] = useState<string | null>(null)
+    const [linkedNodes, setLinkedNodes] = useState<string[]>([])
     const [activeTab, setActiveTab] = useState<'general' | 'checklist'>('general')
     const [newSubtask, setNewSubtask] = useState("")
     const [newLabel, setNewLabel] = useState("")
     const [isSuggesting, setIsSuggesting] = useState(false)
+    const [availableNodes, setAvailableNodes] = useState<{ id: string, label: string }[]>([])
+    const [nodeSearch, setNodeSearch] = useState("")
+
+    useEffect(() => {
+        const fetchNodes = async () => {
+            if (!projectId) return
+            const { data } = await supabase.from('world_nodes').select('id, label').eq('project_id', projectId)
+            if (data) setAvailableNodes(data)
+        }
+        fetchNodes()
+    }, [projectId, open])
 
     useEffect(() => {
         if (task) {
@@ -45,6 +57,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
             setLabels(task.labels || [])
             setSubtasks(task.subtasks || [])
             setAssigneeId(task.assignee_id || null)
+            setLinkedNodes(task.linked_nodes || [])
         } else {
             setTitle("")
             setDescription("")
@@ -52,6 +65,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
             setLabels([])
             setSubtasks([])
             setAssigneeId(null)
+            setLinkedNodes([])
         }
     }, [task, open])
 
@@ -63,6 +77,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
             labels,
             subtasks,
             assignee_id: assigneeId,
+            linked_nodes: linkedNodes
         }
 
         if (task?.id) {
@@ -104,6 +119,14 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
         if (task?.id) {
             await deleteTask(task.id)
             onOpenChange(false)
+        }
+    }
+
+    const toggleNodeLink = (nodeId: string) => {
+        if (linkedNodes.includes(nodeId)) {
+            setLinkedNodes(linkedNodes.filter(id => id !== nodeId))
+        } else {
+            setLinkedNodes([...linkedNodes, nodeId])
         }
     }
 
@@ -226,6 +249,57 @@ export function TaskDialog({ open, onOpenChange, task, projectId, columnId }: Ta
                                         <Plus className="h-4 w-4" />
                                     </Button>
                                 </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <label className="text-sm font-medium">Linked World Nodes</label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {availableNodes.filter(n => linkedNodes.includes(n.id)).map(node => (
+                                        <Badge key={node.id} variant="outline" className="gap-1 pl-2 pr-1 py-1 bg-primary/5 border-primary/20 text-primary">
+                                            <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+                                            {node.label}
+                                            <button onClick={() => toggleNodeLink(node.id)} className="hover:text-destructive ml-1">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search world nodes..."
+                                        className="pl-8"
+                                        value={nodeSearch}
+                                        onChange={(e) => setNodeSearch(e.target.value)}
+                                    />
+                                </div>
+                                {nodeSearch && (
+                                    <div className="border rounded-md p-2 max-h-32 overflow-y-auto bg-muted/30">
+                                        {availableNodes
+                                            .filter(n => !linkedNodes.includes(n.id) && n.label.toLowerCase().includes(nodeSearch.toLowerCase()))
+                                            .map(node => (
+                                                <div
+                                                    key={node.id}
+                                                    className="flex items-center justify-between p-2 hover:bg-white rounded-sm cursor-pointer text-sm"
+                                                    onClick={() => {
+                                                        if (!linkedNodes.includes(node.id)) {
+                                                            setLinkedNodes([...linkedNodes, node.id])
+                                                            setNodeSearch("")
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className="font-medium">{node.label}</span>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6">
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))
+                                        }
+                                        {availableNodes.filter(n => !linkedNodes.includes(n.id) && n.label.toLowerCase().includes(nodeSearch.toLowerCase())).length === 0 && (
+                                            <p className="text-xs text-muted-foreground text-center py-2">No matching nodes found.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
