@@ -1,6 +1,7 @@
 import { LayoutGrid, Plus, Settings, LogOut } from "lucide-react"
 import { Button } from "../ui/button"
 import { NotificationBell } from "./notification-bell"
+import { ThemeToggle } from "./theme-toggle"
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -53,6 +54,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <header className="h-16 border-b border-border flex items-center justify-between px-8 bg-background/50 backdrop-blur-sm sticky top-0 z-10">
                     <h2 className="text-lg font-semibold">Dashboard</h2>
                     <div className="flex items-center gap-4">
+                        <ThemeToggle />
                         <NotificationBell />
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />

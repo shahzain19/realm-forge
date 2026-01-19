@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/button"
 import { cn } from "../../lib/utils"
 import { useState } from "react"
 import { CommandPalette } from "../layout/command-palette"
+import { ThemeToggle } from "../layout/theme-toggle"
 
 export function ProjectLayout() {
     const { projectId } = useParams()
@@ -85,7 +86,11 @@ export function ProjectLayout() {
                     })}
                 </nav>
 
-                <div className={cn("p-4 border-t border-border", isCollapsed && "px-2")}>
+                <div className={cn("p-4 border-t border-border space-y-2", isCollapsed && "px-2")}>
+                    <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between gap-2")}>
+                        {!isCollapsed && <span className="text-xs font-medium text-muted-foreground">Theme</span>}
+                        <ThemeToggle />
+                    </div>
                     <Link to={`/project/${projectId}/settings`} title={isCollapsed ? "Settings" : ""}>
                         <Button variant={location.pathname.endsWith('/settings') ? "secondary" : "ghost"} className={cn("w-full", isCollapsed ? "justify-center p-0 h-10" : "justify-start")}>
                             <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />

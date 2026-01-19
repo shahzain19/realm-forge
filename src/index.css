@@ -41,7 +41,7 @@
 
 :root {
   /* Base: Light */
-  --background: oklch(0.99 0 0);
+  --background: oklch(100% 0.00011 271.152);
   /* Near White */
   --foreground: oklch(0.12 0.01 260);
   /* Deep Black/Ink */
@@ -61,15 +61,15 @@
   /* White */
 
   /* Secondary: Light Cool Gray */
-  --secondary: oklch(0.96 0.01 250);
+  --secondary: oklch(97.16% 0.01573 130.674);
   --secondary-foreground: oklch(0.20 0.02 250);
 
   /* Mute: Subtle Gray */
-  --muted: oklch(0.96 0.01 250);
+  --muted: oklch(97.16% 0.01573 130.674);
   --muted-foreground: oklch(0.55 0.02 250);
 
   /* Accent: Hover states (Light Blueish) */
-  --accent: oklch(0.95 0.03 250);
+  --accent: oklch(97.155% 0.04424 153.501);
   --accent-foreground: oklch(0.12 0.01 260);
 
   /* Destructive */
@@ -84,6 +84,47 @@
 
   --radius: 0.75rem;
   /* Slightly more rounded for modern feel */
+}
+
+.dark {
+  /* Base: Dark */
+  --background: oklch(15% 0.00011 271.152);
+  /* Deep Dark Blue-Gray */
+  --foreground: oklch(0.95 0 0);
+  /* Off-White */
+
+  /* Card / Surfaces */
+  --card: oklch(0.18 0.01 260);
+  /* Slightly Lighter than BG */
+  --card-foreground: oklch(0.95 0 0);
+
+  --popover: oklch(0.18 0.01 260);
+  --popover-foreground: oklch(0.95 0 0);
+
+  /* Primary: Softer Green for Dark Mode */
+  --primary: #6FA572;
+  --primary-foreground: oklch(0.15 0.01 260);
+
+  /* Secondary: Dark Cool Gray */
+  --secondary: oklch(0.22 0.01 250);
+  --secondary-foreground: oklch(0.85 0.01 250);
+
+  /* Mute: Subtle Dark Gray */
+  --muted: oklch(0.22 0.01 250);
+  --muted-foreground: oklch(0.60 0.02 250);
+
+  /* Accent: Hover states (Lighter in Dark) */
+  --accent: oklch(0.25 0.02 250);
+  --accent-foreground: oklch(0.95 0 0);
+
+  /* Destructive */
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  /* Borders / Input */
+  --border: oklch(0.25 0.01 250);
+  --input: oklch(0.25 0.01 250);
+  --ring: oklch(0.60 0.15 250);
 }
 
 @layer utilities {
